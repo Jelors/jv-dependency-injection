@@ -43,7 +43,7 @@ public class Injector {
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException("Can't initialize field value. "
                             + "Class: " + clazz.getName() + "|\n"
-                            + "Field: " + field.getName());
+                            + "Field: " + field.getName(), e);
                 }
             }
         }
@@ -64,22 +64,30 @@ public class Injector {
             Object instance = constructor.newInstance();
             instances.put(clazz, instance);
             return instance;
-        } catch (ReflectiveOperationException exception) {
-            throw new RuntimeException("Can't create a new instance of " + clazz.getName());
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Can't create a new instance of " + clazz.getName(), e);
         }
     }
 
     private Class<?> findImplementation(Class<?> interfaceClazz) {
         if (interfaceClazz.isInterface()) {
-            return IMPLEMENTATIONS.get(interfaceClazz);
+            Class<?> implementation = IMPLEMENTATIONS.get(interfaceClazz);
+            if (implementation == null) {
+                throw new RuntimeException("No implementations found for interface: "
+                        + interfaceClazz.getName());
+            }
+            if (!implementation.isAnnotationPresent(Component.class)) {
+                throw new RuntimeException("Unsupported class was called: "
+                        + implementation.getName());
+            }
+            return implementation;
         }
-        if (IMPLEMENTATIONS.get(interfaceClazz) == null) {
-            throw new RuntimeException("No implementations found for interface: "
+
+        if (!interfaceClazz.isAnnotationPresent(Component.class)) {
+            throw new RuntimeException("Unsupported class was called: "
                     + interfaceClazz.getName());
         }
-        if (!findImplementation(interfaceClazz).isAnnotationPresent(Component.class)) {
-            throw new RuntimeException("Unsupported class was called: " + interfaceClazz.getName());
-        }
+
         return interfaceClazz;
     }
 }
